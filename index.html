@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>옆자리노사원 - 인스타 글쓰기 에이전트</title>
+    <title>옆자리노사원 - AI 인스타그램 (사용자 설정형)</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +39,7 @@
             margin: 2rem auto;
             padding: 0 2rem;
             display: grid;
-            grid-template-columns: 1fr 400px; /* 입력창 : 미리보기창 */
+            grid-template-columns: 1fr 400px;
             gap: 40px;
         }
 
@@ -81,10 +81,11 @@
         .emoji { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
 
         /* 입력 필드 및 버튼 */
-        .input-group { margin-bottom: 1.5rem; }
+        .input-group { margin-bottom: 1.2rem; text-align: left; }
+        .input-group label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px; color: #555; }
         .input-group input {
-            width: 100%; padding: 1rem;
-            border: 2px solid #eee; border-radius: 12px;
+            width: 100%; padding: 0.8rem;
+            border: 2px solid #eee; border-radius: 10px;
             font-size: 1rem;
         }
         .btn-generate {
@@ -164,8 +165,8 @@
             display: flex; justify-content: center; align-items: center;
         }
         .login-box {
-            background: white; padding: 2rem; border-radius: 16px;
-            width: 90%; max-width: 400px;
+            background: white; padding: 2.5rem; border-radius: 16px;
+            width: 90%; max-width: 420px;
             text-align: center;
         }
     </style>
@@ -181,18 +182,17 @@
         const { useState, useEffect } = React;
 
         function App() {
-            // 로그인 상태
+            // 로그인 상태 (모델명 추가)
             const [apiKey, setApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
             const [userName, setUserName] = useState(localStorage.getItem('userName') || '');
+            const [modelName, setModelName] = useState(localStorage.getItem('geminiModel') || 'gemini-1.5-flash'); // 기본값
             const [isLoggedIn, setIsLoggedIn] = useState(false);
 
             // 앱 상태
             const [selectedTheme, setSelectedTheme] = useState('');
             const [customTopic, setCustomTopic] = useState('');
             const [isLoading, setIsLoading] = useState(false);
-            
-            // 결과 상태
-            const [result, setResult] = useState(null); // { hook, body, hashtags }
+            const [result, setResult] = useState(null); 
 
             const themes = [
                 { id: 'monday', name: '월요병 퇴치', emoji: '😫', prompt: '월요일 아침 직장인이 공감할 만한 피곤함과 해탈을 유머러스하게 표현' },
@@ -206,22 +206,26 @@
             ];
 
             useEffect(() => {
-                if (apiKey && userName) setIsLoggedIn(true);
+                if (apiKey && userName && modelName) setIsLoggedIn(true);
             }, []);
 
             const handleLogin = () => {
-                if (!apiKey.trim() || !userName.trim()) return alert('정보를 입력해주세요!');
+                if (!apiKey.trim() || !userName.trim() || !modelName.trim()) {
+                    return alert('모든 정보를 입력해주세요!');
+                }
                 localStorage.setItem('geminiApiKey', apiKey);
                 localStorage.setItem('userName', userName);
+                localStorage.setItem('geminiModel', modelName); // 모델명 저장
                 setIsLoggedIn(true);
             };
 
             const handleLogout = () => {
+                // 키만 지우고 모델명은 남겨두는 게 편할 수 있음
                 localStorage.removeItem('geminiApiKey');
                 localStorage.removeItem('userName');
                 setIsLoggedIn(false);
                 setApiKey('');
-                setUserName('');
+                // setUserName(''); // 이름은 재입력 귀찮으니 남김 (선택사항)
             };
 
             const generateText = async () => {
@@ -232,14 +236,14 @@
                 setResult(null);
 
                 try {
-                    // ✨✨ 핵심 변경: Header 방식으로 호출 ✨✨
+                    // ✨ 사용자가 입력한 모델명(modelName)을 URL 변수로 사용 ✨
                     const response = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent`,
+                        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
                         {
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
-                                'X-goog-api-key': apiKey  // 블로그에서 본 그 방식!
+                                'X-goog-api-key': apiKey // 헤더 방식
                             },
                             body: JSON.stringify({
                                 contents: [{
@@ -265,15 +269,14 @@
                     const data = await response.json();
                     
                     if (data.error) {
-                         alert(`API 오류 발생: ${data.error.message}`);
+                         alert(`API 오류 발생!\n\n입력하신 모델명: ${modelName}\n에러 메시지: ${data.error.message}\n\n(모델명이 정확한지 확인해보세요)`);
                          console.error(data.error);
                          return;
                     }
 
-                    if (!data.candidates) throw new Error("API 호출 실패 (응답 없음)");
+                    if (!data.candidates) throw new Error("API 호출은 성공했으나 응답이 비어있습니다.");
                     
                     let rawText = data.candidates[0].content.parts[0].text;
-                    // 마크다운 코드블럭 제거 (`json ... `)
                     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
                     
                     const parsedResult = JSON.parse(rawText);
@@ -298,15 +301,35 @@
                 return (
                     <div className="login-overlay">
                         <div className="login-box">
-                            <h2 style={{marginBottom: '1rem'}}>🚀 옆자리노사원 시작하기</h2>
-                            <input className="input-group" style={{width:'100%', marginBottom:'10px'}} 
-                                placeholder="사용자 이름 (예: 노사원)" value={userName} onChange={e => setUserName(e.target.value)} />
-                            <input className="input-group" style={{width:'100%', marginBottom:'20px'}} type="password"
-                                placeholder="Gemini API Key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
-                            <button className="btn-generate" onClick={handleLogin}>로그인</button>
-                            <p style={{fontSize: '0.8rem', color: '#666', marginTop: '1rem'}}>
-                                API Key는 브라우저에만 저장됩니다.
-                            </p>
+                            <h2 style={{marginBottom: '1.5rem'}}>🚀 옆자리노사원 설정</h2>
+                            
+                            <div className="input-group">
+                                <label>👤 사용자 이름 (표시용)</label>
+                                <input placeholder="예: 노사원" value={userName} onChange={e => setUserName(e.target.value)} />
+                            </div>
+
+                            <div className="input-group">
+                                <label>🔑 Gemini API Key</label>
+                                <input type="password" placeholder="AIza... 로 시작하는 키" value={apiKey} onChange={e => setApiKey(e.target.value)} />
+                            </div>
+
+                            {/* 모델명 입력 필드 추가 */}
+                            <div className="input-group">
+                                <label>🤖 사용할 모델 이름</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="예: gemini-1.5-flash" 
+                                    value={modelName} 
+                                    onChange={e => setModelName(e.target.value)} 
+                                />
+                                <div style={{fontSize:'0.75rem', color:'#888', marginTop:'5px', textAlign:'left'}}>
+                                    추천: gemini-1.5-flash, gemini-1.5-flash-001, gemini-2.0-flash-exp
+                                </div>
+                            </div>
+                            
+                            <button className="btn-generate" onClick={handleLogin} style={{marginTop:'1rem'}}>
+                                시작하기
+                            </button>
                         </div>
                     </div>
                 );
@@ -318,14 +341,16 @@
                         <div className="header-content">
                             <div className="logo">📱 옆자리노사원 AI</div>
                             <div>
+                                <span style={{marginRight:'10px', fontSize:'0.9rem', color:'#666'}}>
+                                    🤖 {modelName} 사용 중
+                                </span>
                                 <span style={{marginRight:'10px'}}>👤 {userName}님</span>
-                                <button onClick={handleLogout} style={{padding:'5px 10px', cursor:'pointer'}}>로그아웃</button>
+                                <button onClick={handleLogout} style={{padding:'5px 10px', cursor:'pointer', border:'1px solid #ddd', background:'white', borderRadius:'5px'}}>설정변경</button>
                             </div>
                         </div>
                     </header>
 
                     <div className="container">
-                        {/* 왼쪽: 입력 컨트롤 */}
                         <div className="left-panel">
                             <div className="card">
                                 <h3 style={{marginBottom:'1rem'}}>1. 어떤 글을 쓸까요?</h3>
@@ -361,7 +386,6 @@
                             </div>
                         </div>
 
-                        {/* 오른쪽: 미리보기 */}
                         <div className="right-panel">
                             <div className="phone-mockup">
                                 <div className="notch"></div>
@@ -370,18 +394,14 @@
                                     <div className="username">옆자리노사원_official</div>
                                     <div style={{marginLeft:'auto'}}>•••</div>
                                 </div>
-                                
-                                {/* 이미지 영역 (플레이스홀더) */}
                                 <div className="insta-placeholder-img">
                                     {isLoading ? 'AI가 생각하는 중...🧠' : 
                                      result ? '📷 여기에 어울리는\n사진을 넣어주세요' : '주제를 선택하면\n글이 생성됩니다'}
                                 </div>
-
                                 <div className="insta-actions">
                                     <span>❤️</span> <span>💬</span> <span>✈️</span>
                                     <span style={{marginLeft:'auto'}}>🔖</span>
                                 </div>
-
                                 <div className="insta-content">
                                     <span className="likes">좋아요 1,284개</span>
                                     {result ? (
@@ -397,7 +417,6 @@
                                     )}
                                 </div>
                             </div>
-                            
                             {result && (
                                 <button className="btn-copy" onClick={copyToClipboard}>
                                     📋 전체 텍스트 복사하기
@@ -414,4 +433,3 @@
     </script>
 </body>
 </html>
-
