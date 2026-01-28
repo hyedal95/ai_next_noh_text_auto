@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>옆자리노사원 - 인스타 글쓰기 에이전트</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            color: #1d1d1f;
+        }
+
+        /* 헤더 스타일 */
+        .header {
+            background: white;
+            padding: 1.5rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #E1306C; }
+
+        /* 메인 레이아웃 */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px; /* 입력창 : 미리보기창 */
+            gap: 40px;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        /* 카드 공통 */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* 주제 버튼 그리드 */
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 2rem;
+        }
+        .theme-btn {
+            padding: 1rem;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .theme-btn:hover { border-color: #E1306C; background: #fff5f8; }
+        .theme-btn.active { 
+            border-color: #E1306C; 
+            background: #E1306C; 
+            color: white;
+            font-weight: bold;
+        }
+        .emoji { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
+
+        /* 입력 필드 및 버튼 */
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group input {
+            width: 100%; padding: 1rem;
+            border: 2px solid #eee; border-radius: 12px;
+            font-size: 1rem;
+        }
+        .btn-generate {
+            width: 100%; padding: 1.2rem;
+            background: linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D);
+            color: white; border: none; border-radius: 12px;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-generate:disabled { opacity: 0.7; cursor: wait; }
+
+        /* 인스타그램 미리보기 (폰 목업) */
+        .phone-mockup {
+            border: 12px solid #1d1d1f;
+            border-radius: 40px;
+            background: white;
+            overflow: hidden;
+            position: relative;
+            min-height: 700px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .notch {
+            width: 150px; height: 25px; background: #1d1d1f;
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            z-index: 10;
+        }
+        
+        /* 인스타 UI */
+        .insta-header {
+            padding: 40px 16px 10px;
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid #efefef;
+        }
+        .profile-pic { width: 32px; height: 32px; background: #ddd; border-radius: 50%; }
+        .username { font-weight: 600; font-size: 14px; }
+        
+        .insta-placeholder-img {
+            width: 100%; height: 350px;
+            background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-size: 1.2rem; font-weight: bold;
+            text-align: center; padding: 20px;
+        }
+
+        .insta-actions { padding: 10px 16px; font-size: 24px; display: flex; gap: 16px; }
+        
+        .insta-content { padding: 0 16px 20px; font-size: 14px; line-height: 1.6; }
+        .likes { font-weight: 600; margin-bottom: 8px; display: block; }
+        .caption-text { white-space: pre-wrap; word-break: break-all; }
+        .highlight-hook { font-weight: bold; color: #262626; display: block; margin-bottom: 8px; }
+        .hashtags { color: #00376b; margin-top: 10px; display: block; }
+
+        /* 복사 버튼 */
+        .btn-copy {
+            margin-top: 1rem;
+            width: 100%; padding: 1rem;
+            background: #efefef; border: none; border-radius: 8px;
+            font-weight: 600; cursor: pointer;
+        }
+        .btn-copy:hover { background: #e0e0e0; }
+
+        /* 로딩 애니메이션 */
+        .loading-spinner {
+            display: inline-block; width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 로그인 모달 */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: white; padding: 2rem; border-radius: 16px;
+            width: 90%; max-width: 400px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            // 로그인 상태
+            const [apiKey, setApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
+            const [userName, setUserName] = useState(localStorage.getItem('userName') || '');
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+            // 앱 상태
+            const [selectedTheme, setSelectedTheme] = useState('');
+            const [customTopic, setCustomTopic] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            
+            // 결과 상태
+            const [result, setResult] = useState(null); // { hook, body, hashtags }
+
+            const themes = [
+                { id: 'monday', name: '월요병 퇴치', emoji: '😫', prompt: '월요일 아침 직장인이 공감할 만한 피곤함과 해탈을 유머러스하게 표현' },
+                { id: 'meeting', name: '네버엔딩 회의', emoji: '🗣️', prompt: '끝나지 않는 회의 시간, 멍때리는 직장인의 속마음' },
+                { id: 'lunch', name: '점심 메뉴', emoji: '🍱', prompt: '오늘 뭐 먹지 고민하는 직장인의 최대 난제와 행복한 고민' },
+                { id: 'leaving', name: '칼퇴 기원', emoji: '🏃', prompt: '퇴근 10분 전의 초조함과 칼퇴를 향한 강한 집념' },
+                { id: 'mistake', name: '실수 수습', emoji: '💦', prompt: '업무 실수 후 식은땀 나는 상황과 대처하는(척하는) 모습' },
+                { id: 'salary', name: '월급 로그인', emoji: '💸', prompt: '월급이 스쳐 지나가는 통장 잔고의 슬픔과 금융치료' },
+                { id: 'coffee', name: '카페인 수혈', emoji: '☕', prompt: '커피 없이는 시동이 안 걸리는 현대 직장인의 비애' },
+                { id: 'weekend', name: '주말 순삭', emoji: '🚀', prompt: '눈 깜짝할 새 지나간 주말과 다가오는 출근의 공포' }
+            ];
+
+            useEffect(() => {
+                if (apiKey && userName) setIsLoggedIn(true);
+            }, []);
+
+            const handleLogin = () => {
+                if (!apiKey.trim() || !userName.trim()) return alert('정보를 입력해주세요!');
+                localStorage.setItem('geminiApiKey', apiKey);
+                localStorage.setItem('userName', userName);
+                setIsLoggedIn(true);
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('geminiApiKey');
+                localStorage.removeItem('userName');
+                setIsLoggedIn(false);
+                setApiKey('');
+                setUserName('');
+            };
+
+            const generateText = async () => {
+                const themeData = themes.find(t => t.id === selectedTheme);
+                const topic = customTopic || themeData?.prompt || '직장인 일상';
+                
+                setIsLoading(true);
+                setResult(null);
+
+                try {
+                    const response = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: `
+당신은 인스타그램 계정 '옆자리노사원'의 운영자입니다. 
+다음 주제에 맞춰 팔로워들의 반응(좋아요, 댓글)을 이끌어낼 수 있는 매력적인 게시물 내용을 작성해주세요.
+
+주제: ${topic}
+
+반드시 다음 JSON 형식으로만 답변해주세요 (마크다운 없이 순수 JSON만):
+{
+  "hook": "첫 줄에 들어갈 시선을 끄는 강력한 한 문장 (이모지 포함)",
+  "body": "본문 내용 (공감, 유머, 줄바꿈을 적절히 사용하여 가독성 높게 작성)",
+  "hashtags": "관련된 인기 해시태그 10~15개 (예: #직장인 #칼퇴)"
+}`
+                                    }]
+                                }]
+                            })
+                        }
+                    );
+
+                    const data = await response.json();
+                    
+                    if (!data.candidates) throw new Error("API 호출 실패 (키 확인 필요)");
+                    
+                    let rawText = data.candidates[0].content.parts[0].text;
+                    // 마크다운 코드블럭 제거 (`json ... `)
+                    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    
+                    const parsedResult = JSON.parse(rawText);
+                    setResult(parsedResult);
+
+                } catch (e) {
+                    alert(`오류 발생: ${e.message}`);
+                    console.error(e);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const copyToClipboard = () => {
+                if (!result) return;
+                const fullText = `${result.hook}\n\n${result.body}\n\n${result.hashtags}`;
+                navigator.clipboard.writeText(fullText);
+                alert('✨ 텍스트가 복사되었습니다! 인스타에 붙여넣으세요.');
+            };
+
+            if (!isLoggedIn) {
+                return (
+                    <div className="login-overlay">
+                        <div className="login-box">
+                            <h2 style={{marginBottom: '1rem'}}>🚀 옆자리노사원 시작하기</h2>
+                            <input className="input-group" style={{width:'100%', marginBottom:'10px'}} 
+                                placeholder="사용자 이름 (예: 노사원)" value={userName} onChange={e => setUserName(e.target.value)} />
+                            <input className="input-group" style={{width:'100%', marginBottom:'20px'}} type="password"
+                                placeholder="Gemini API Key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
+                            <button className="btn-generate" onClick={handleLogin}>로그인</button>
+                            <p style={{fontSize: '0.8rem', color: '#666', marginTop: '1rem'}}>
+                                API Key는 브라우저에만 저장됩니다.
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <header className="header">
+                        <div className="header-content">
+                            <div className="logo">📱 옆자리노사원 AI</div>
+                            <div>
+                                <span style={{marginRight:'10px'}}>👤 {userName}님</span>
+                                <button onClick={handleLogout} style={{padding:'5px 10px', cursor:'pointer'}}>로그아웃</button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="container">
+                        {/* 왼쪽: 입력 컨트롤 */}
+                        <div className="left-panel">
+                            <div className="card">
+                                <h3 style={{marginBottom:'1rem'}}>1. 어떤 글을 쓸까요?</h3>
+                                <div className="theme-grid">
+                                    {themes.map(t => (
+                                        <div key={t.id} 
+                                            className={`theme-btn ${selectedTheme === t.id ? 'active' : ''}`}
+                                            onClick={() => { setSelectedTheme(t.id); setCustomTopic(''); }}
+                                        >
+                                            <span className="emoji">{t.emoji}</span>
+                                            {t.name}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="input-group">
+                                    <label style={{display:'block', marginBottom:'8px', fontWeight:'bold'}}>직접 입력하고 싶다면?</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="예: 회식 자리 피하는 꿀팁 알려줘"
+                                        value={customTopic}
+                                        onChange={(e) => { setCustomTopic(e.target.value); setSelectedTheme(''); }}
+                                    />
+                                </div>
+
+                                <button 
+                                    className="btn-generate" 
+                                    onClick={generateText}
+                                    disabled={isLoading || (!selectedTheme && !customTopic)}
+                                >
+                                    {isLoading ? <><span className="loading-spinner"></span> 글 쓰는 중...</> : '✨ AI 글 생성하기'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 오른쪽: 미리보기 */}
+                        <div className="right-panel">
+                            <div className="phone-mockup">
+                                <div className="notch"></div>
+                                <div className="insta-header">
+                                    <div className="profile-pic"></div>
+                                    <div className="username">옆자리노사원_official</div>
+                                    <div style={{marginLeft:'auto'}}>•••</div>
+                                </div>
+                                
+                                {/* 이미지 영역 (플레이스홀더) */}
+                                <div className="insta-placeholder-img">
+                                    {isLoading ? 'AI가 생각하는 중...🧠' : 
+                                     result ? '📷 여기에 어울리는\n사진을 넣어주세요' : '주제를 선택하면\n글이 생성됩니다'}
+                                </div>
+
+                                <div className="insta-actions">
+                                    <span>❤️</span> <span>💬</span> <span>✈️</span>
+                                    <span style={{marginLeft:'auto'}}>🔖</span>
+                                </div>
+
+                                <div className="insta-content">
+                                    <span className="likes">좋아요 1,284개</span>
+                                    {result ? (
+                                        <>
+                                            <span className="highlight-hook">{result.hook}</span>
+                                            <div className="caption-text">{result.body}</div>
+                                            <div className="hashtags">{result.hashtags}</div>
+                                        </>
+                                    ) : (
+                                        <div style={{color:'#999', padding:'20px 0'}}>
+                                            왼쪽에서 주제를 선택하고<br/>'생성하기' 버튼을 눌러보세요!
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {result && (
+                                <button className="btn-copy" onClick={copyToClipboard}>
+                                    📋 전체 텍스트 복사하기
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
